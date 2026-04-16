@@ -95,16 +95,16 @@ def trigger_ironman():
     speech_thread = threading.Thread(target=speak, args=(speech,), daemon=False)
     speech_thread.start()
 
-    subprocess.Popen(["xdg-open", SPOTIFY_URI], env=env)
+    subprocess.Popen(["xdg-open", SPOTIFY_URI], env=env, start_new_session=True)
     time.sleep(0.5)
 
     subprocess.Popen(
         ["gnome-terminal", "--", "fish", "-c", "sleep 1; claude"],
-        env=env,
+        env=env, start_new_session=True,
     )
     time.sleep(0.5)
 
-    subprocess.Popen(["code"], env=env)
+    subprocess.Popen(["code"], env=env, start_new_session=True)
 
     speech_thread.join()
     log("Sequence done. Shutting down.")
