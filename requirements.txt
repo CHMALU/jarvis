@@ -1,2 +1,5 @@
 sounddevice
 numpy
+edge-tts
+feedparser
+pygame

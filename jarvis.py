@@ -1,42 +1,98 @@
 #!/usr/bin/env python3
-import subprocess
-import time
-import threading
-import sys
+import asyncio
+import datetime
 import os
+import subprocess
+import sys
+import tempfile
+import threading
+import time
 
+import feedparser
 import numpy as np
+import pygame
 import sounddevice as sd
+import edge_tts
 
 SAMPLE_RATE = 44100
 BLOCK_SIZE = 512
 CLAP_MIN_GAP = 0.3
 CLAP_MAX_GAP = 1.2
-COOLDOWN = 3.0
 AMBIENT_CALIBRATION_SECS = 2
 AMBIENT_MULTIPLIER = 8
 
 SPOTIFY_URI = "spotify:track:39shmbIHICJ2Wxnk1fPSdz"
+VOICE = "en-GB-RyanNeural"
+NEWS_RSS = "http://feeds.bbci.co.uk/news/rss.xml"
+NEWS_COUNT = 3
 
 last_clap_time = None
-last_trigger_time = 0
 threshold = 0.15
 lock = threading.Lock()
+triggered = False
 
 
 def log(msg):
     print(msg, flush=True)
 
 
+def get_greeting():
+    hour = datetime.datetime.now().hour
+    if hour < 12:
+        return "Good morning, sir."
+    elif hour < 18:
+        return "Good afternoon, sir."
+    return "Good evening, sir."
+
+
+def get_news():
+    try:
+        feed = feedparser.parse(NEWS_RSS)
+        headlines = [e.title for e in feed.entries[:NEWS_COUNT]]
+        if not headlines:
+            return ""
+        return "Today's headlines: " + ". ".join(headlines) + "."
+    except Exception:
+        return ""
+
+
+async def _synthesize(text, path):
+    communicate = edge_tts.Communicate(text, VOICE)
+    await communicate.save(path)
+
+
+def speak(text):
+    with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
+        path = f.name
+    try:
+        asyncio.run(_synthesize(text, path))
+        pygame.mixer.init()
+        pygame.mixer.music.load(path)
+        pygame.mixer.music.play()
+        while pygame.mixer.music.get_busy():
+            time.sleep(0.1)
+        pygame.mixer.quit()
+    except Exception as e:
+        log(f"TTS error: {e}")
+    finally:
+        os.unlink(path)
+
+
 def trigger_ironman():
     log(">>> IRONMAN SEQUENCE INITIATED <<<")
 
     subprocess.run(["xset", "dpms", "force", "on"], check=False)
-    time.sleep(0.8)
+    time.sleep(0.5)
 
     env = os.environ.copy()
     env.setdefault("DISPLAY", ":0")
     env.setdefault("DBUS_SESSION_BUS_ADDRESS", f"unix:path=/run/user/{os.getuid()}/bus")
+
+    greeting = get_greeting()
+    news = get_news()
+    speech = f"{greeting} {news}" if news else greeting
+    log(f"Speaking: {speech}")
+    speak(speech)
 
     subprocess.Popen(["xdg-open", SPOTIFY_URI], env=env)
     time.sleep(0.5)
@@ -49,21 +105,24 @@ def trigger_ironman():
 
     subprocess.Popen(["code"], env=env)
 
-    log("Sequence done.")
+    log("Sequence done. Shutting down.")
+    os._exit(0)
 
 
 def audio_callback(indata, frames, time_info, status):
-    global last_clap_time, last_trigger_time
+    global last_clap_time, triggered
+
+    if triggered:
+        return
 
     rms = float(np.sqrt(np.mean(indata ** 2)))
-
     if rms < threshold:
         return
 
     now = time.monotonic()
 
     with lock:
-        if now - last_trigger_time < COOLDOWN:
+        if triggered:
             return
 
         if last_clap_time is None:
@@ -76,12 +135,12 @@ def audio_callback(indata, frames, time_info, status):
 
         if CLAP_MIN_GAP <= gap <= CLAP_MAX_GAP:
             log(f"Clap 2 detected (gap={gap:.2f}s) — TRIGGERING")
-            last_trigger_time = now
-            threading.Thread(target=trigger_ironman, daemon=True).start()
+            triggered = True
+            threading.Thread(target=trigger_ironman, daemon=False).start()
         elif gap < CLAP_MIN_GAP:
             log(f"Too fast ({gap:.2f}s), resetting")
         else:
-            log(f"Too slow ({gap:.2f}s), treating as new first clap")
+            log(f"Too slow ({gap:.2f}s), new first clap")
             last_clap_time = now
 
 
@@ -108,8 +167,8 @@ def main():
 
     with sd.InputStream(samplerate=SAMPLE_RATE, blocksize=BLOCK_SIZE,
                         channels=1, dtype="float32", callback=audio_callback):
-        while True:
-            time.sleep(1)
+        while not triggered:
+            time.sleep(0.5)
 
 
 if __name__ == "__main__":

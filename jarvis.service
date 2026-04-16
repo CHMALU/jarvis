@@ -1,6 +1,6 @@
 [Unit]
 Description=Jarvis - Iron Man Clap Detector
-After=default.target
+After=graphical-session.target
 
 [Service]
 ExecStart=/home/dawid/Projects/jarvis/.venv/bin/python /home/dawid/Projects/jarvis/jarvis.py
