@@ -16,7 +16,7 @@ COOLDOWN = 3.0
 AMBIENT_CALIBRATION_SECS = 2
 AMBIENT_MULTIPLIER = 8
 
-SPOTIFY_URI = "spotify:search:Back in Black AC/DC"
+SPOTIFY_URI = "spotify:track:39shmbIHICJ2Wxnk1fPSdz"
 
 last_clap_time = None
 last_trigger_time = 0
@@ -38,6 +38,9 @@ def trigger_ironman():
     env.setdefault("DISPLAY", ":0")
     env.setdefault("DBUS_SESSION_BUS_ADDRESS", f"unix:path=/run/user/{os.getuid()}/bus")
 
+    subprocess.Popen(["xdg-open", SPOTIFY_URI], env=env)
+    time.sleep(0.5)
+
     subprocess.Popen(
         ["gnome-terminal", "--", "bash", "-c", "claude; exec bash"],
         env=env,
@@ -45,9 +48,6 @@ def trigger_ironman():
     time.sleep(0.5)
 
     subprocess.Popen(["code"], env=env)
-    time.sleep(0.5)
-
-    subprocess.Popen(["xdg-open", SPOTIFY_URI], env=env)
 
     log("Sequence done.")
 
