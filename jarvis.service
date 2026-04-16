@@ -6,6 +6,7 @@ After=graphical-session.target
 ExecStart=/home/dawid/Projects/jarvis/.venv/bin/python /home/dawid/Projects/jarvis/jarvis.py
 Restart=always
 RestartSec=5
+KillMode=process
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=jarvis
