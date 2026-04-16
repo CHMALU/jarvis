@@ -7,7 +7,8 @@ SERVICE_DIR="$HOME/.config/systemd/user"
 echo "=== Jarvis Install ==="
 
 echo "[1/4] Installing Python dependencies..."
-pip3 install -r "$SCRIPT_DIR/requirements.txt"
+python3 -m venv "$SCRIPT_DIR/.venv"
+"$SCRIPT_DIR/.venv/bin/pip" install -r "$SCRIPT_DIR/requirements.txt"
 
 echo "[2/4] Setting up systemd user service..."
 mkdir -p "$SERVICE_DIR"

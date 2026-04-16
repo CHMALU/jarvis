@@ -3,7 +3,7 @@ Description=Jarvis - Iron Man Clap Detector
 After=default.target
 
 [Service]
-ExecStart=/usr/bin/python3 /home/dawid/Projects/jarvis/jarvis.py
+ExecStart=/home/dawid/Projects/jarvis/.venv/bin/python /home/dawid/Projects/jarvis/jarvis.py
 Restart=always
 RestartSec=5
 StandardOutput=journal
