@@ -7,12 +7,16 @@ import sys
 import tempfile
 import threading
 import time
+from pathlib import Path
 
 import feedparser
 import numpy as np
 import pygame
 import sounddevice as sd
-import edge_tts
+from dotenv import load_dotenv
+from fish_audio_sdk import Session, TTSRequest
+
+load_dotenv(Path(__file__).parent / ".env")
 
 SAMPLE_RATE = 44100
 BLOCK_SIZE = 512
@@ -22,7 +26,7 @@ AMBIENT_CALIBRATION_SECS = 2
 AMBIENT_MULTIPLIER = 8
 
 SPOTIFY_URI = "spotify:track:39shmbIHICJ2Wxnk1fPSdz"
-VOICE = "en-GB-RyanNeural"
+JARVIS_VOICE_ID = "612b878b113047d9a770c069c8b4fdfe"
 NEWS_RSS = "http://feeds.bbci.co.uk/news/rss.xml"
 NEWS_COUNT = 3
 
@@ -56,16 +60,21 @@ def get_news():
         return ""
 
 
-async def _synthesize(text, path):
-    communicate = edge_tts.Communicate(text, VOICE)
-    await communicate.save(path)
-
-
 def speak(text):
+    api_key = os.getenv("FISH_AUDIO_API_KEY")
+    if not api_key:
+        log("TTS skipped: FISH_AUDIO_API_KEY not set")
+        return
     with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
         path = f.name
     try:
-        asyncio.run(_synthesize(text, path))
+        session = Session(api_key)
+        with open(path, "wb") as f:
+            for chunk in session.tts(TTSRequest(
+                reference_id=JARVIS_VOICE_ID,
+                text=text,
+            )):
+                f.write(chunk)
         pygame.mixer.init()
         pygame.mixer.music.load(path)
         pygame.mixer.music.play()
