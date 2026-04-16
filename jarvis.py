@@ -91,7 +91,9 @@ def trigger_ironman():
     news = get_news()
     speech = f"{greeting} {news}" if news else greeting
     log(f"Speaking: {speech}")
-    speak(speech)
+
+    speech_thread = threading.Thread(target=speak, args=(speech,), daemon=False)
+    speech_thread.start()
 
     subprocess.Popen(["xdg-open", SPOTIFY_URI], env=env)
     time.sleep(0.5)
@@ -104,6 +106,7 @@ def trigger_ironman():
 
     subprocess.Popen(["code"], env=env)
 
+    speech_thread.join()
     log("Sequence done. Shutting down.")
     os._exit(0)
 
