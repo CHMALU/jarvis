@@ -2,5 +2,4 @@ sounddevice
 numpy
 feedparser
 pygame
-fish-audio-sdk
-python-dotenv
+edge-tts
