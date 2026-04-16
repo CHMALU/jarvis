@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import asyncio
 import datetime
 import os
 import subprocess
@@ -8,7 +7,6 @@ import tempfile
 import threading
 import time
 
-import edge_tts
 import feedparser
 import numpy as np
 import pygame
@@ -62,9 +60,11 @@ def speak(text):
     with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
         path = f.name
     try:
-        loop = asyncio.new_event_loop()
-        loop.run_until_complete(edge_tts.Communicate(text, VOICE).save(path))
-        loop.close()
+        edge_bin = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".venv", "bin", "edge-tts")
+        subprocess.run(
+            [edge_bin, "--voice", VOICE, "--text", text, "--write-media", path],
+            check=True, capture_output=True,
+        )
         pygame.mixer.init()
         pygame.mixer.music.load(path)
         pygame.mixer.music.play()
