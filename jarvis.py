@@ -16,8 +16,9 @@ import sounddevice as sd
 
 SAMPLE_RATE = 44100
 BLOCK_SIZE = 512
-CLAP_MIN_GAP = 0.3
-CLAP_MAX_GAP = 1.2
+CLAP_DEBOUNCE = 0.15   # ignoruj kolejne spiki przez 150ms po klaśnięciu
+CLAP_MIN_GAP = 0.2
+CLAP_MAX_GAP = 1.5
 AMBIENT_CALIBRATION_SECS = 2
 AMBIENT_MULTIPLIER = 8
 
@@ -27,6 +28,7 @@ NEWS_RSS = "http://feeds.bbci.co.uk/news/rss.xml"
 NEWS_COUNT = 3
 
 last_clap_time = None
+last_spike_time = 0.0   # czas ostatniego spike'a (debounce)
 threshold = 0.15
 lock = threading.Lock()
 triggered = False
@@ -56,16 +58,13 @@ def get_news():
         return ""
 
 
-async def _synthesize(text, path):
-    communicate = edge_tts.Communicate(text, VOICE)
-    await communicate.save(path)
-
-
 def speak(text):
     with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
         path = f.name
     try:
-        asyncio.run(_synthesize(text, path))
+        loop = asyncio.new_event_loop()
+        loop.run_until_complete(edge_tts.Communicate(text, VOICE).save(path))
+        loop.close()
         pygame.mixer.init()
         pygame.mixer.music.load(path)
         pygame.mixer.music.play()
@@ -110,7 +109,7 @@ def trigger_ironman():
 
 
 def audio_callback(indata, frames, time_info, status):
-    global last_clap_time, triggered
+    global last_clap_time, last_spike_time, triggered
 
     if triggered:
         return
@@ -125,22 +124,25 @@ def audio_callback(indata, frames, time_info, status):
         if triggered:
             return
 
+        # debounce: ignoruj spiki które są echem poprzedniego klaśnięcia
+        if now - last_spike_time < CLAP_DEBOUNCE:
+            return
+        last_spike_time = now
+
         if last_clap_time is None:
             last_clap_time = now
-            log(f"Clap 1 detected (rms={rms:.4f})")
+            log(f"Clap 1 (rms={rms:.4f})")
             return
 
         gap = now - last_clap_time
         last_clap_time = None
 
         if CLAP_MIN_GAP <= gap <= CLAP_MAX_GAP:
-            log(f"Clap 2 detected (gap={gap:.2f}s) — TRIGGERING")
+            log(f"Clap 2 (gap={gap:.2f}s) — TRIGGERING")
             triggered = True
             threading.Thread(target=trigger_ironman, daemon=False).start()
-        elif gap < CLAP_MIN_GAP:
-            log(f"Too fast ({gap:.2f}s), resetting")
         else:
-            log(f"Too slow ({gap:.2f}s), new first clap")
+            log(f"Gap {gap:.2f}s — nowe pierwsze klaśnięcie")
             last_clap_time = now
 
 
