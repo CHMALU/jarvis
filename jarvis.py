@@ -99,7 +99,7 @@ def trigger_ironman():
     time.sleep(0.5)
 
     subprocess.Popen(
-        ["gnome-terminal", "--", "bash", "-c", "claude; exec bash"],
+        ["gnome-terminal", "--", "fish", "-c", "sleep 1; claude"],
         env=env,
     )
     time.sleep(0.5)
