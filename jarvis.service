@@ -1,0 +1,16 @@
+[Unit]
+Description=Jarvis - Iron Man Clap Detector
+After=default.target
+
+[Service]
+ExecStart=/usr/bin/python3 /home/dawid/Projects/jarvis/jarvis.py
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=jarvis
+Environment=DISPLAY=:0
+Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus
+
+[Install]
+WantedBy=default.target
