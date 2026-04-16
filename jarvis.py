@@ -60,7 +60,7 @@ def speak(text):
     with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
         path = f.name
     try:
-        edge_bin = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".venv", "bin", "edge-tts")
+        edge_bin = os.path.join(os.path.dirname(sys.executable), "edge-tts")
         subprocess.run(
             [edge_bin, "--voice", VOICE, "--text", text, "--write-media", path],
             check=True, capture_output=True,
